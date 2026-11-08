@@ -313,7 +313,7 @@ function buildLevelChips() {
 
 function setAll(on) {
   app.selected = new Set(on ? app.ratios.map((l) => l.name) : []);
-  for (const b of els.levels.children) b.setAttribute('aria-pressed', String(on));
+  for (const b of els.levels.querySelectorAll('.chip')) b.setAttribute('aria-pressed', String(on));
   draw();
 }
 

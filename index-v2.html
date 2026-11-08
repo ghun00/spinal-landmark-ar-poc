@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Spinal Landmarking PoC (v2)</title>
+  <link rel="stylesheet" href="app/style.css">
+  <link rel="stylesheet" href="app/style-v2.css">
+</head>
+<!-- Design trial (v2): same app logic (app/main.js, same element ids),
+     new bottom controls: level summary pill + round re-analyze button,
+     level selection in a bottom sheet. -->
+<body data-mode="idle" class="v2">
+  <main id="stage" class="stage">
+    <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
+    <div id="markerTag" class="tag" role="status" aria-live="polite" data-tone="idle" hidden>마커 0/3</div>
+    <div id="modeToggle" class="seg" role="group" aria-label="인식 방식" hidden>
+      <button type="button" data-track="lock" aria-pressed="true">고정형</button>
+      <button type="button" data-track="live" aria-pressed="false">실시간형</button>
+    </div>
+    <div id="status" class="toast" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
+
+    <section id="startPanel" class="panel">
+      <h1>척추 레벨 예상 위치 표시</h1>
+      <ol>
+        <li>C7과 좌·우 PSIS에 빨간 원형 스티커 3개를 붙입니다.</li>
+        <li>대상자는 등을 카메라 쪽으로 향하고 바로 섭니다.</li>
+        <li>휴대폰을 세워 등 뒤에서 똑바로, 스티커 3개가 모두 보이게 촬영합니다.</li>
+      </ol>
+      <p class="muted">표시되는 점은 비율 기반 추정 위치이며 해부학적 정확도는 검증되지 않았습니다.</p>
+      <button id="startBtn" class="primary" type="button" disabled>카메라 시작</button>
+      <p id="cvNote" class="muted small"></p>
+    </section>
+
+    <section id="errorPanel" class="panel error" hidden>
+      <p id="errorText"></p>
+      <button id="retryBtn" class="primary" type="button">다시 시도</button>
+    </section>
+
+    <pre id="debugPanel" class="debug" hidden></pre>
+    <canvas id="maskPreview" class="mask" hidden></canvas>
+
+    <!-- Floating bottom bar over the camera view -->
+    <div class="dock">
+      <div id="testRow" class="dock-test" hidden>
+        <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
+      </div>
+      <div class="dock-row">
+        <button id="levelPill" class="level-pill" type="button" aria-haspopup="dialog" aria-controls="levelSheet" aria-expanded="false">
+          <span class="level-pill-label">레벨</span>
+          <span id="levelSummary" class="level-pill-value">T1 · T7 · L1 · S1</span>
+          <svg class="level-pill-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="reanalyzeBtn" class="shutter" type="button" disabled aria-label="다시 분석">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="shutter-label">다시 분석</span>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Level selection bottom sheet -->
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+  <section id="levelSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <h2 id="sheetTitle">표시할 레벨</h2>
+      <div class="sheet-actions">
+        <button id="allBtn" class="text-btn" type="button">전체</button>
+        <span aria-hidden="true">·</span>
+        <button id="noneBtn" class="text-btn" type="button">해제</button>
+      </div>
+    </header>
+    <div id="levels" class="levels-grouped" aria-label="표시할 레벨"></div>
+    <button id="sheetDone" class="sheet-done" type="button">완료</button>
+  </section>
+
+  <video id="video" playsinline muted autoplay></video>
+  <script type="module" src="app/main.js"></script>
+  <script type="module" src="app/v2.js"></script>
+</body>
+</html>
