@@ -261,8 +261,13 @@ function syncMarkerTag() {
 // ---------- Lock / re-analyze ----------
 const TRACK_KEY = 'spinal.trackMode';
 
+// A page may set its default via <body data-default-track="live">; otherwise 고정형.
 function loadTrackMode() {
-  try { return localStorage.getItem(TRACK_KEY) === 'live' ? 'live' : 'lock'; } catch { return 'lock'; }
+  const fallback = document.body.dataset.defaultTrack === 'live' ? 'live' : 'lock';
+  try {
+    const saved = localStorage.getItem(TRACK_KEY);
+    return saved === 'live' || saved === 'lock' ? saved : fallback;
+  } catch { return fallback; }
 }
 
 function setTrackMode(mode) {
