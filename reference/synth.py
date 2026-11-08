@@ -1,0 +1,113 @@
+"""Generate synthetic test scenes: skin-tone background + red round stickers.
+
+Run: .venv/bin/python reference/synth.py
+Writes reference/fixtures/<name>.png, <name>.rgba.gz (gzipped raw RGBA), expected.json.
+"""
+import gzip
+import json
+import math
+import zlib
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+from config import load_detection
+from detector import detect
+from geometry import classify
+
+FIX = Path(__file__).resolve().parent / "fixtures"
+RED = (40, 40, 210)        # BGR
+ORANGE = (0, 140, 255)     # BGR, hue ~16 -> outside red ranges
+SHIFT = 4                  # sub-pixel drawing precision (1/16 px)
+
+PORTRAIT = {"C7": (362.5, 250.25), "L": (288.75, 905.5), "R": (441.25, 898.0)}
+
+
+def background(w, h, seed):
+    rng = np.random.default_rng(seed)
+    top, bot = np.array([150, 180, 222.0]), np.array([118, 148, 196.0])
+    t = np.linspace(0, 1, h)[:, None, None]
+    img = (top * (1 - t) + bot * t) * np.ones((h, w, 3))
+    # Tiled 64x64 noise patch: realistic texture, but keeps fixture files small.
+    patch = rng.normal(0, 3, (64, 64, 3))
+    img += np.tile(patch, (h // 64 + 1, w // 64 + 1, 1))[:h, :w]
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def circle(img, center, r, color):
+    f = 1 << SHIFT
+    c = (int(round(center[0] * f)), int(round(center[1] * f)))
+    cv2.circle(img, c, int(round(r * f)), color, -1, cv2.LINE_AA, SHIFT)
+
+
+def rotate(pts, angle_deg, cx, cy):
+    a = math.radians(angle_deg)
+    out = {}
+    for k, (x, y) in pts.items():
+        dx, dy = x - cx, y - cy
+        out[k] = (cx + dx * math.cos(a) - dy * math.sin(a), cy + dx * math.sin(a) + dy * math.cos(a))
+    return out
+
+
+def scale_about(pts, s, cx, cy):
+    return {k: (cx + (x - cx) * s, cy + (y - cy) * s) for k, (x, y) in pts.items()}
+
+
+SCENES = {
+    "normal": dict(w=720, h=1280, pts=PORTRAIT, r=18, status="ok"),
+    "small_far": dict(w=720, h=1280, pts=scale_about(PORTRAIT, 0.5, 360, 600), r=9, status="ok"),
+    "dim": dict(w=720, h=1280, pts=PORTRAIT, r=18, dim=0.6, status="ok"),
+    "rotated": dict(w=720, h=1280, pts=rotate(PORTRAIT, 8, 360, 640), r=18, status="ok"),
+    "landscape": dict(w=1280, h=720,
+                      pts={"C7": (640.5, 120.25), "L": (588.0, 560.75), "R": (693.5, 556.0)},
+                      r=16, status="ok"),
+    "occluded": dict(w=720, h=1280, pts={k: v for k, v in PORTRAIT.items() if k != "R"},
+                     r=18, status="too_few"),
+    "extra_red": dict(w=720, h=1280, pts={**PORTRAIT, "X": (150.0, 600.0)}, r=18, status="too_many"),
+    "red_rect": dict(w=720, h=1280, pts=PORTRAIT, r=18, rect=((100, 700), (160, 720)), status="ok"),
+    "bad_layout": dict(w=720, h=1280, pts={**PORTRAIT, "C7": (362.5, 880.0)}, r=18, status="bad_layout"),
+    "orange_tape": dict(w=720, h=1280, pts=PORTRAIT, r=18, orange=(560.0, 600.0), status="ok"),
+}
+
+
+def make_scene(name, spec):
+    img = background(spec["w"], spec["h"], seed=zlib.crc32(name.encode()))
+    for p in spec["pts"].values():
+        circle(img, p, spec["r"], RED)
+    if "rect" in spec:
+        cv2.rectangle(img, spec["rect"][0], spec["rect"][1], RED, -1)
+    if "orange" in spec:
+        circle(img, spec["orange"], 18, ORANGE)
+    if "dim" in spec:
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
+        hsv[..., 2] *= spec["dim"]
+        img = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+    expected = {
+        "w": spec["w"], "h": spec["h"],
+        "centers": [list(p) for p in spec["pts"].values()],
+        "status": spec["status"],
+    }
+    return img, expected
+
+
+def main():
+    FIX.mkdir(exist_ok=True)
+    cfg = load_detection()
+    out = {}
+    for name, spec in SCENES.items():
+        img, exp = make_scene(name, spec)
+        cv2.imwrite(str(FIX / f"{name}.png"), img)
+        (FIX / f"{name}.rgba.gz").write_bytes(
+            gzip.compress(cv2.cvtColor(img, cv2.COLOR_BGR2RGBA).tobytes(), mtime=0))
+        res = detect(img, cfg)
+        exp["py_centers"] = [[c["x"], c["y"]] for c in res["candidates"]]
+        _, status = classify([tuple(c) for c in exp["py_centers"]], exp["h"], cfg["minVerticalGapFrac"])
+        exp["py_status"] = status
+        out[name] = exp
+        print(f"{name:12s} expected={exp['status']:10s} detected={len(exp['py_centers'])} status={status}")
+    (FIX / "expected.json").write_text(json.dumps(out, indent=1))
+
+
+if __name__ == "__main__":
+    main()
