@@ -66,3 +66,8 @@ test('non-debug mode does not compute HSV', () => {
   const { candidates } = detectCandidates(cv, fixture('normal'), CFG);
   assert.equal(candidates[0].hsv, undefined);
 });
+
+test('blob touching the frame edge is rejected as edge', () => {
+  const { rejected } = detectCandidates(cv, fixture('edge_red'), CFG);
+  assert.ok(rejected.some((r) => r.why === 'edge'));
+});

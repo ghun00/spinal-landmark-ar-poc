@@ -47,3 +47,8 @@ def test_synth_is_reproducible():
     from synth import SCENES, make_scene
     img, _ = make_scene("normal", SCENES["normal"])
     assert np.array_equal(img, load_fixture("normal"))
+
+
+def test_edge_touching_blob_rejected():
+    res = detect(load_fixture("edge_red"), CFG)
+    assert any(r["why"] == "edge" for r in res["rejected"])

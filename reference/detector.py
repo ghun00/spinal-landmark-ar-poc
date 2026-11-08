@@ -3,7 +3,7 @@
 Pipeline (keep identical to app/detector.js):
 resize (long side -> processLongSide, INTER_AREA) -> HSV -> inRange per range,
 OR -> morph OPEN then CLOSE (ellipse kernel) -> external contours ->
-area / circularity filter -> moment centroid -> scale back to input pixels.
+edge / area / circularity filter -> moment centroid -> scale back to input pixels.
 """
 import math
 
@@ -49,7 +49,11 @@ def detect(bgr, cfg):
         else:
             x, y = c[0][0][0] / sx, c[0][0][1] / sy
         item = {"x": float(x), "y": float(y), "area": float(area), "circularity": float(circ)}
-        if area < amin:
+        bx, by, bw, bh = cv2.boundingRect(c)
+        if bx <= 0 or by <= 0 or bx + bw >= pw or by + bh >= ph:
+            # Cut off by the frame edge: not a fully visible sticker.
+            rejected.append({**item, "why": "edge"})
+        elif area < amin:
             rejected.append({**item, "why": "small"})
         elif area > amax:
             rejected.append({**item, "why": "large"})

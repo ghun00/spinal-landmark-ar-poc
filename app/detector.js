@@ -2,7 +2,7 @@
 // Mirrors reference/detector.py step for step — keep them identical:
 // resize (long side -> processLongSide, INTER_AREA) -> HSV -> inRange per
 // range, OR -> morph OPEN then CLOSE (ellipse kernel) -> external contours ->
-// area / circularity filter -> moment centroid -> scale back to input pixels.
+// edge / area / circularity filter -> moment centroid -> scale back to input pixels.
 
 const PREVIEW_LONG_SIDE = 160;
 
@@ -71,8 +71,12 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
         const x = (mo.m00 > 0 ? mo.m10 / mo.m00 : c.data32S[0]) / sx;
         const y = (mo.m00 > 0 ? mo.m01 / mo.m00 : c.data32S[1]) / sy;
         const item = { x, y, area, circularity };
-        if (fill) item.hsv = meanHsv(cv, hsv, fill, contours, i, cv.boundingRect(c));
-        if (area < amin) rejected.push({ ...item, why: 'small' });
+        const box = cv.boundingRect(c);
+        if (fill) item.hsv = meanHsv(cv, hsv, fill, contours, i, box);
+        if (box.x <= 0 || box.y <= 0 || box.x + box.width >= pw || box.y + box.height >= ph) {
+          // Cut off by the frame edge: not a fully visible sticker.
+          rejected.push({ ...item, why: 'edge' });
+        } else if (area < amin) rejected.push({ ...item, why: 'small' });
         else if (area > amax) rejected.push({ ...item, why: 'large' });
         else if (circularity < cfg.minCircularity) rejected.push({ ...item, why: 'circularity' });
         else candidates.push(item);

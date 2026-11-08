@@ -24,9 +24,13 @@ SHIFT = 4                  # sub-pixel drawing precision (1/16 px)
 PORTRAIT = {"C7": (362.5, 250.25), "L": (288.75, 905.5), "R": (441.25, 898.0)}
 
 
-def background(w, h, seed):
+def background(w, h, seed, warm=False):
     rng = np.random.default_rng(seed)
     top, bot = np.array([150, 180, 222.0]), np.array([118, 148, 196.0])
+    if warm:
+        # Warm-lit skin as measured (photo + S25 camera): H 8-10, S ~105-120,
+        # i.e. above the old S>=100 floor that let skin through.
+        top, bot = np.array([106, 134, 200.0]), np.array([84, 106, 158.0])
     t = np.linspace(0, 1, h)[:, None, None]
     img = (top * (1 - t) + bot * t) * np.ones((h, w, 3))
     # Tiled 64x64 noise patch: realistic texture, but keeps fixture files small.
@@ -68,15 +72,23 @@ SCENES = {
     "red_rect": dict(w=720, h=1280, pts=PORTRAIT, r=18, rect=((100, 700), (160, 720)), status="ok"),
     "bad_layout": dict(w=720, h=1280, pts={**PORTRAIT, "C7": (362.5, 880.0)}, r=18, status="bad_layout"),
     "orange_tape": dict(w=720, h=1280, pts=PORTRAIT, r=18, orange=(560.0, 600.0), status="ok"),
+    # Regression: skin saturation above the old S>=100 threshold made the whole
+    # back "red"; stickers are pinkish red (H~177, S~175-185) as in the real photo.
+    # A red object cut off by the frame edge (e.g. an ear at the top of the
+    # photo) is not a sticker: stickers must be fully in frame.
+    "edge_red": dict(w=720, h=1280, pts=PORTRAIT, r=18, edge=(300.0, 4.0), status="ok"),
+    "warm_skin": dict(w=720, h=1280, pts=PORTRAIT, r=14, warm=True, color=(84, 69, 215), status="ok"),
 }
 
 
 def make_scene(name, spec):
-    img = background(spec["w"], spec["h"], seed=zlib.crc32(name.encode()))
+    img = background(spec["w"], spec["h"], seed=zlib.crc32(name.encode()), warm=spec.get("warm", False))
     for p in spec["pts"].values():
-        circle(img, p, spec["r"], RED)
+        circle(img, p, spec["r"], spec.get("color", RED))
     if "rect" in spec:
         cv2.rectangle(img, spec["rect"][0], spec["rect"][1], RED, -1)
+    if "edge" in spec:
+        circle(img, spec["edge"], 16, RED)
     if "orange" in spec:
         circle(img, spec["orange"], 18, ORANGE)
     if "dim" in spec:
