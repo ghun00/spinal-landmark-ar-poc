@@ -11,6 +11,10 @@
   <main id="stage" class="stage">
     <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
     <div id="markerTag" class="tag" role="status" aria-live="polite" data-tone="idle" hidden>마커 0/3</div>
+    <div id="modeToggle" class="seg" role="group" aria-label="인식 방식" hidden>
+      <button type="button" data-track="lock" aria-pressed="true">고정형</button>
+      <button type="button" data-track="live" aria-pressed="false">실시간형</button>
+    </div>
     <div id="status" class="toast" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
 
     <section id="startPanel" class="panel">

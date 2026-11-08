@@ -19,7 +19,7 @@ const els = {
   view: $('view'), video: $('video'), status: $('status'),
   start: $('startPanel'), startBtn: $('startBtn'), cvNote: $('cvNote'),
   error: $('errorPanel'), errorText: $('errorText'), retryBtn: $('retryBtn'),
-  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), reBtn: $('reanalyzeBtn'), tag: $('markerTag'),
+  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), reBtn: $('reanalyzeBtn'), tag: $('markerTag'), modeToggle: $('modeToggle'),
   testRow: $('testRow'), testInput: $('testInput'),
   debug: $('debugPanel'), mask: $('maskPreview'),
 };
@@ -36,6 +36,8 @@ const app = {
   errorKind: null, // camera error kind or 'cv' / 'config'
   lock: createMarkerLock(), // live mode: hold markers once stably recognized
   lockState: { state: 'searching', markers: null, progress: 0 },
+  // 'lock' = 고정형 (hold once stable), 'live' = 실시간형 (re-detect every frame)
+  trackMode: loadTrackMode(),
 };
 const srcCtx = app.src.getContext('2d', { willReadFrequently: true });
 
@@ -144,7 +146,8 @@ function onFrame(session) {
           draw(); // keep the live video; markers stay locked, no detection
         } else {
           analyzeCurrent();
-          app.lockState = app.lock.update(app.result, app.src.height);
+          // 실시간형 never feeds the lock, so lockState stays 'searching'.
+          if (app.trackMode === 'lock') app.lockState = app.lock.update(app.result, app.src.height);
           if (app.lockState.state === 'locked') { draw(); updateStatus(); syncMarkerTag(); syncReanalyze(); }
         }
       }
@@ -250,12 +253,26 @@ function syncMarkerTag() {
   const show = (app.mode === 'live' || app.mode === 'test') && app.cvState === 'ready';
   els.tag.hidden = !show;
   if (!show) return;
-  const { text, tone } = markerTag(app.result, app.mode === 'live' ? app.lockState.state : 'searching');
+  const { text, tone } = markerTag(app.result, app.mode === 'live' && app.trackMode === 'lock' ? app.lockState.state : 'searching');
   els.tag.textContent = text;
   els.tag.dataset.tone = tone;
 }
 
 // ---------- Lock / re-analyze ----------
+const TRACK_KEY = 'spinal.trackMode';
+
+function loadTrackMode() {
+  try { return localStorage.getItem(TRACK_KEY) === 'live' ? 'live' : 'lock'; } catch { return 'lock'; }
+}
+
+function setTrackMode(mode) {
+  if (mode === app.trackMode) return;
+  app.trackMode = mode;
+  try { localStorage.setItem(TRACK_KEY, mode); } catch { /* per-device convenience only */ }
+  resetLock(); // either way, start from a fresh detection
+  updateUi();
+}
+
 function resetLock() {
   app.lock.reset();
   app.lockState = app.lock.state();
@@ -269,7 +286,12 @@ function reanalyze() {
 }
 
 function syncReanalyze() {
+  els.reBtn.hidden = app.trackMode !== 'lock';
   els.reBtn.disabled = !(app.mode === 'live' && app.lockState.state === 'locked');
+  els.modeToggle.hidden = app.mode !== 'live';
+  for (const b of els.modeToggle.querySelectorAll('button')) {
+    b.setAttribute('aria-pressed', String(b.dataset.track === app.trackMode));
+  }
 }
 
 function buildLevelChips() {
@@ -341,6 +363,10 @@ async function boot() {
   els.allBtn.addEventListener('click', () => setAll(true));
   els.noneBtn.addEventListener('click', () => setAll(false));
   els.reBtn.addEventListener('click', reanalyze);
+  els.modeToggle.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-track]');
+    if (b) setTrackMode(b.dataset.track);
+  });
   els.testInput.addEventListener('change', () => onTestImage(els.testInput.files[0]));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && app.stream && els.video.paused) {
