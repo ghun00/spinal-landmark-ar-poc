@@ -5,6 +5,7 @@ import { classifyMarkers } from './geometry.js';
 import { loadRatios, DEFAULT_SELECTED } from './levels.js';
 import { render } from './render.js';
 import { markerTag } from './markerTag.js';
+import { createMarkerLock } from './lock.js';
 
 const CV_SRC = 'vendor/opencv-4.13.0.js';
 const CV_SLOW_MS = 30000; // after this, tell the user it is slow but keep waiting
@@ -18,7 +19,7 @@ const els = {
   view: $('view'), video: $('video'), status: $('status'),
   start: $('startPanel'), startBtn: $('startBtn'), cvNote: $('cvNote'),
   error: $('errorPanel'), errorText: $('errorText'), retryBtn: $('retryBtn'),
-  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), tag: $('markerTag'),
+  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), reBtn: $('reanalyzeBtn'), tag: $('markerTag'),
   testRow: $('testRow'), testInput: $('testInput'),
   debug: $('debugPanel'), mask: $('maskPreview'),
 };
@@ -33,6 +34,8 @@ const app = {
   src: document.createElement('canvas'), // current frame at source resolution
   result: null, // {markers?, reason, candidates, rejected, maskPreview?}
   errorKind: null, // camera error kind or 'cv' / 'config'
+  lock: createMarkerLock(), // live mode: hold markers once stably recognized
+  lockState: { state: 'searching', markers: null, progress: 0 },
 };
 const srcCtx = app.src.getContext('2d', { willReadFrequently: true });
 
@@ -89,6 +92,7 @@ async function startCamera() {
     await els.video.play();
     app.mode = 'live';
     app.result = null;
+    resetLock();
     updateUi();
     scheduleFrame(session);
   } catch (err) {
@@ -136,7 +140,13 @@ function onFrame(session) {
           app.src.height = v.videoHeight;
         }
         srcCtx.drawImage(v, 0, 0);
-        analyzeCurrent();
+        if (app.lockState.state === 'locked') {
+          draw(); // keep the live video; markers stay locked, no detection
+        } else {
+          analyzeCurrent();
+          app.lockState = app.lock.update(app.result, app.src.height);
+          if (app.lockState.state === 'locked') { draw(); updateStatus(); syncMarkerTag(); syncReanalyze(); }
+        }
       }
     } catch (err) {
       console.error('[analyze]', err);
@@ -174,7 +184,9 @@ function selectedLevels() {
 }
 
 function draw() {
-  if (app.mode === 'live' || app.mode === 'test') {
+  if (app.mode === 'live' && app.lockState.state === 'locked') {
+    render(els.view, app.src, { markers: app.lockState.markers }, selectedLevels(), {});
+  } else if (app.mode === 'live' || app.mode === 'test') {
     render(els.view, app.src.width ? app.src : null, app.result, selectedLevels(), { debug: DEBUG });
   } else {
     render(els.view, null, null, []);
@@ -205,6 +217,7 @@ function updateStatus() {
   }
   if (app.cvState === 'loading') return setStatus(app.cvSlow ? '인식 엔진을 불러오는 중… 네트워크가 느립니다. 잠시 기다려 주세요.' : '인식 엔진(OpenCV) 불러오는 중…', 'idle');
   if (app.cvState === 'failed') return setStatus('인식 엔진을 불러오지 못했습니다', 'error');
+  if (app.mode === 'live' && app.lockState.state === 'locked') return setStatus('위치 고정됨 — 다시 분석하려면 [다시 분석]', 'ok');
   if (!app.result) return setStatus(app.mode === 'test' ? '테스트 이미지를 선택하세요' : '인식 대기 중…', 'warn');
   if (app.result.markers) return setStatus(app.mode === 'test' ? '인식 성공 (테스트 이미지)' : '● 인식 중', 'ok');
   return setStatus(REASON_TEXT[app.result.reason] ?? '마커를 인식하지 못했습니다', 'warn');
@@ -226,6 +239,7 @@ function updateUi() {
   }
 
   syncMarkerTag();
+  syncReanalyze();
   document.body.dataset.mode = m;
   updateStatus();
   draw();
@@ -236,9 +250,26 @@ function syncMarkerTag() {
   const show = (app.mode === 'live' || app.mode === 'test') && app.cvState === 'ready';
   els.tag.hidden = !show;
   if (!show) return;
-  const { text, tone } = markerTag(app.result);
+  const { text, tone } = markerTag(app.result, app.mode === 'live' ? app.lockState.state : 'searching');
   els.tag.textContent = text;
   els.tag.dataset.tone = tone;
+}
+
+// ---------- Lock / re-analyze ----------
+function resetLock() {
+  app.lock.reset();
+  app.lockState = app.lock.state();
+  app.result = null;
+  syncReanalyze();
+}
+
+function reanalyze() {
+  resetLock();
+  updateUi();
+}
+
+function syncReanalyze() {
+  els.reBtn.disabled = !(app.mode === 'live' && app.lockState.state === 'locked');
 }
 
 function buildLevelChips() {
@@ -309,6 +340,7 @@ async function boot() {
   });
   els.allBtn.addEventListener('click', () => setAll(true));
   els.noneBtn.addEventListener('click', () => setAll(false));
+  els.reBtn.addEventListener('click', reanalyze);
   els.testInput.addEventListener('change', () => onTestImage(els.testInput.files[0]));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && app.stream && els.video.paused) {

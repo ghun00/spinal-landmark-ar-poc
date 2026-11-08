@@ -2,10 +2,13 @@
 
 /**
  * @param {{candidates:any[], reason:string}|null} result latest analysis
+ * @param {'searching'|'stabilizing'|'locked'} [lockState]
  * @returns {{text:string, tone:'idle'|'ok'|'warn'|'error'}}
  */
-export function markerTag(result) {
+export function markerTag(result, lockState = 'searching') {
+  if (lockState === 'locked') return { text: '마커 3/3 · 고정됨', tone: 'ok' };
   if (!result) return { text: '마커 0/3', tone: 'idle' };
+  if (lockState === 'stabilizing' && result.reason === 'ok') return { text: '마커 3/3 · 확인 중', tone: 'warn' };
   const n = result.candidates.length;
   const base = `마커 ${n}/3`;
   switch (result.reason) {

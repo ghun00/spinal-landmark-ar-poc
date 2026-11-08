@@ -24,3 +24,12 @@ test('three found but bad layout -> 3/3 with hint, warn', () => {
 test('too many candidates -> count shown with hint, error', () => {
   assert.deepEqual(markerTag({ candidates: cands(5), reason: 'too_many' }), { text: '마커 5/3 · 후보 과다', tone: 'error' });
 });
+
+test('locked -> 3/3 fixed, ok', () => {
+  assert.deepEqual(markerTag({ candidates: cands(3), reason: 'ok', markers: {} }, 'locked'), { text: '마커 3/3 · 고정됨', tone: 'ok' });
+  assert.deepEqual(markerTag(null, 'locked'), { text: '마커 3/3 · 고정됨', tone: 'ok' });
+});
+
+test('stabilizing -> 3/3 checking, warn', () => {
+  assert.deepEqual(markerTag({ candidates: cands(3), reason: 'ok', markers: {} }, 'stabilizing'), { text: '마커 3/3 · 확인 중', tone: 'warn' });
+});
