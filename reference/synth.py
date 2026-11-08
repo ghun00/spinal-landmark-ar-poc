@@ -78,6 +78,9 @@ SCENES = {
     # photo) is not a sticker: stickers must be fully in frame.
     "edge_red": dict(w=720, h=1280, pts=PORTRAIT, r=18, edge=(300.0, 4.0), status="ok"),
     "warm_skin": dict(w=720, h=1280, pts=PORTRAIT, r=14, warm=True, color=(84, 69, 215), status="ok"),
+    # Far away: ~9 px stickers on warm skin (S25 lost stickers at distance).
+    "far_warm": dict(w=720, h=1280, pts=scale_about(PORTRAIT, 0.35, 360, 600), r=4.5, warm=True,
+                     color=(84, 69, 215), status="ok"),
 }
 
 
