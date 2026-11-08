@@ -1,0 +1,22 @@
+{
+  "version": "spinevst-sample-c3d-v1",
+  "source": "SpineVST (Sample C3D)",
+  "sourceUrl": "https://app.notion.com/p/40a624e7163d8156a95cd1fad6b104e7",
+  "denominator": "C7→S2 vertical distance; PoC assumption: S2 = midpoint of L/R PSIS markers (100%)",
+  "note": "single-sample static average; not a validated multi-subject reference",
+  "levels": [
+    { "name": "T1", "ratio": 2.94 },
+    { "name": "T2", "ratio": 6.49 },
+    { "name": "T3", "ratio": 11.62 },
+    { "name": "T4", "ratio": 16.01 },
+    { "name": "T5", "ratio": 23.18 },
+    { "name": "T6", "ratio": 31.16 },
+    { "name": "T7", "ratio": 39.04 },
+    { "name": "L1", "ratio": 73.13 },
+    { "name": "L2", "ratio": 78.21 },
+    { "name": "L3", "ratio": 83.90 },
+    { "name": "L4", "ratio": 87.69 },
+    { "name": "L5", "ratio": 92.82 },
+    { "name": "S1", "ratio": 95.87 }
+  ]
+}

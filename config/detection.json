@@ -1,0 +1,12 @@
+{
+  "processLongSide": 640,
+  "hsvRanges": [
+    [[0, 100, 70], [10, 255, 255]],
+    [[170, 100, 70], [180, 255, 255]]
+  ],
+  "morphKernel": 5,
+  "minAreaFrac": 0.00005,
+  "maxAreaFrac": 0.02,
+  "minCircularity": 0.70,
+  "minVerticalGapFrac": 0.10
+}

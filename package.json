@@ -1,0 +1,6 @@
+{
+  "name": "spinal-landmark-ar-poc",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test tests/" }
+}

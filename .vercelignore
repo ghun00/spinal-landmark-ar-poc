@@ -1,0 +1,6 @@
+reference/
+tests/
+docs/
+*.md
+package.json
+.superpowers/
