@@ -52,3 +52,8 @@ def test_synth_is_reproducible():
 def test_edge_touching_blob_rejected():
     res = detect(load_fixture("edge_red"), CFG)
     assert any(r["why"] == "edge" for r in res["rejected"])
+
+
+def test_cluttered_blob_rejected():
+    res = detect(load_fixture("cluster"), CFG)
+    assert any(r["why"] == "clutter" for r in res["rejected"])

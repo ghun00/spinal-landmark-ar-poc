@@ -8,5 +8,8 @@
   "minAreaFrac": 0.00002,
   "maxAreaFrac": 0.02,
   "minCircularity": 0.80,
-  "minVerticalGapFrac": 0.10
+  "minVerticalGapFrac": 0.10,
+  "clutterRadius": 5,
+  "clutterRadiusMinPx": 12,
+  "maxNeighbors": 2
 }

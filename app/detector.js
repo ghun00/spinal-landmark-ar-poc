@@ -2,7 +2,11 @@
 // Mirrors reference/detector.py step for step — keep them identical:
 // resize (long side -> processLongSide, INTER_AREA) -> HSV -> inRange per
 // range, OR -> morph OPEN then CLOSE (ellipse kernel) -> external contours ->
-// edge / area / circularity filter -> moment centroid -> scale back to input pixels.
+// edge / area / circularity / clutter filter -> moment centroid -> scale back to input pixels.
+// Clutter: markers are discrete points. Red spots = connected components of
+// the pre-morphology mask; a candidate with more than maxNeighbors spot
+// centroids within max(clutterRadius*r, r+clutterRadiusMinPx) (excluding its
+// own radius r = sqrt(area/pi)) is rejected as clutter.
 
 const PREVIEW_LONG_SIDE = 160;
 
@@ -44,6 +48,11 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
       cv.inRange(hsv, lower, upper, part);
       cv.bitwise_or(mask, part, mask);
     }
+    // Red spots before cleanup (tiny specks count) for the clutter check.
+    const ccLabels = keep(new cv.Mat()), ccStats = keep(new cv.Mat()), ccCents = keep(new cv.Mat());
+    const nSpots = cv.connectedComponentsWithStats(mask, ccLabels, ccStats, ccCents, 8, cv.CV_32S);
+    const spots = ccCents.data64F; // [x0, y0, x1, y1, ...]; index 0 is background
+
     const k = keep(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(cfg.morphKernel, cfg.morphKernel)));
     const anchor = new cv.Point(-1, -1);
     const border = cv.morphologyDefaultBorderValue();
@@ -79,6 +88,7 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
         } else if (area < amin) rejected.push({ ...item, why: 'small' });
         else if (area > amax) rejected.push({ ...item, why: 'large' });
         else if (circularity < cfg.minCircularity) rejected.push({ ...item, why: 'circularity' });
+        else if (neighbors(spots, nSpots, x * sx, y * sy, area, cfg) > cfg.maxNeighbors) rejected.push({ ...item, why: 'clutter' });
         else candidates.push(item);
       } finally {
         c.delete();
@@ -92,6 +102,18 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
   } finally {
     for (const x of mats) x.delete();
   }
+}
+
+/** Count other red spots near (cx, cy) in processed pixels. */
+function neighbors(spots, nSpots, cx, cy, area, cfg) {
+  const r = Math.sqrt(area / Math.PI);
+  const reach = Math.max(cfg.clutterRadius * r, r + cfg.clutterRadiusMinPx);
+  let n = 0;
+  for (let i = 1; i < nSpots; i++) {
+    const d = Math.hypot(spots[2 * i] - cx, spots[2 * i + 1] - cy);
+    if (d > r && d <= reach) n++;
+  }
+  return n;
 }
 
 /**

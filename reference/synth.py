@@ -85,6 +85,10 @@ SCENES = {
     "shadow_skin": dict(w=720, h=1280, pts=PORTRAIT, r=12, warm=True, color=(84, 69, 215),
                         shadow_dots=[(120.0, 700.0), (600.0, 720.0), (140.0, 980.0)],
                         red_ellipses=[(560.0, 450.0), (170.0, 470.0)], status="ok"),
+    # Markers are discrete points: a round red blob surrounded by red specks
+    # (textured shadow edge, same hue as the stickers) is not a marker.
+    "cluster": dict(w=720, h=1280, pts=PORTRAIT, r=12, warm=True, color=(84, 69, 215),
+                    cluster=(150.0, 640.0), status="ok"),
     "far_warm": dict(w=720, h=1280, pts=scale_about(PORTRAIT, 0.35, 360, 600), r=4.5, warm=True,
                      color=(84, 69, 215), status="ok"),
 }
@@ -102,6 +106,13 @@ def make_scene(name, spec):
         f = 1 << SHIFT                             # 8x4 / 10x5 px ellipses: circularity ~0.76
         cv2.ellipse(img, (int(ex * f), int(ey * f)), (8 * f, 4 * f) if ex > 360 else (10 * f, 5 * f), 30, 0, 360,
                     spec.get("color", RED), -1, cv2.LINE_AA, SHIFT)
+    if "cluster" in spec:
+        cx, cy = spec["cluster"]
+        circle(img, (cx, cy), 7, spec.get("color", RED))
+        for k in range(14):                        # ring of specks 12-24 px out
+            a = k * 2 * math.pi / 14
+            d = 12 + 12 * ((k * 7) % 5) / 4
+            circle(img, (cx + d * math.cos(a), cy + d * math.sin(a)), 1.6, spec.get("color", RED))
     if "edge" in spec:
         circle(img, spec["edge"], 16, RED)
     if "orange" in spec:

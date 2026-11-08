@@ -71,3 +71,8 @@ test('blob touching the frame edge is rejected as edge', () => {
   const { rejected } = detectCandidates(cv, fixture('edge_red'), CFG);
   assert.ok(rejected.some((r) => r.why === 'edge'));
 });
+
+test('blob surrounded by red specks is rejected as clutter', () => {
+  const { rejected } = detectCandidates(cv, fixture('cluster'), CFG);
+  assert.ok(rejected.some((r) => r.why === 'clutter'));
+});

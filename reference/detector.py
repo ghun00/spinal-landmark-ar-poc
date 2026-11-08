@@ -3,7 +3,13 @@
 Pipeline (keep identical to app/detector.js):
 resize (long side -> processLongSide, INTER_AREA) -> HSV -> inRange per range,
 OR -> morph OPEN then CLOSE (ellipse kernel) -> external contours ->
-edge / area / circularity filter -> moment centroid -> scale back to input pixels.
+edge / area / circularity / clutter filter -> moment centroid -> scale back to input pixels.
+
+Clutter: markers are discrete points, so a real sticker has no other red
+spots around it. Red spots are connected components of the pre-morphology
+mask (tiny specks count). A candidate with more than maxNeighbors spot
+centroids within max(clutterRadius*r, r+clutterRadiusMinPx), r =
+sqrt(area/pi), excluding its own area, is rejected as clutter.
 """
 import math
 
@@ -14,6 +20,14 @@ import numpy as np
 def _scale_for(w, h, long_side):
     m = max(w, h)
     return 1.0 if m <= long_side else long_side / m
+
+
+def _neighbors(cents, cx, cy, area, cfg):
+    """Other red spots (raw-mask components) near (cx, cy), processed pixels."""
+    r = math.sqrt(area / math.pi)
+    reach = max(cfg["clutterRadius"] * r, r + cfg["clutterRadiusMinPx"])
+    d = np.hypot(cents[:, 0] - cx, cents[:, 1] - cy)
+    return int(np.count_nonzero((d > r) & (d <= reach)))
 
 
 def detect(bgr, cfg):
@@ -31,6 +45,8 @@ def detect(bgr, cfg):
     for lo, hi in cfg["hsvRanges"]:
         m = cv2.inRange(hsv, np.array(lo, np.uint8), np.array(hi, np.uint8))
         mask = m if mask is None else cv2.bitwise_or(mask, m)
+    _, _, _, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    cents = cents[1:]  # drop background
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (cfg["morphKernel"], cfg["morphKernel"]))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k)
@@ -59,6 +75,8 @@ def detect(bgr, cfg):
             rejected.append({**item, "why": "large"})
         elif circ < cfg["minCircularity"]:
             rejected.append({**item, "why": "circularity"})
+        elif _neighbors(cents, x * sx, y * sy, area, cfg) > cfg["maxNeighbors"]:
+            rejected.append({**item, "why": "clutter"})
         else:
             candidates.append(item)
     candidates.sort(key=lambda d: d["y"])
