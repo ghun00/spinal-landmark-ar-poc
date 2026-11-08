@@ -4,6 +4,7 @@ import { detectCandidates } from './detector.js';
 import { classifyMarkers } from './geometry.js';
 import { loadRatios, DEFAULT_SELECTED } from './levels.js';
 import { render } from './render.js';
+import { markerTag } from './markerTag.js';
 
 const CV_SRC = 'vendor/opencv-4.13.0.js';
 const CV_SLOW_MS = 30000; // after this, tell the user it is slow but keep waiting
@@ -17,12 +18,12 @@ const els = {
   view: $('view'), video: $('video'), status: $('status'),
   start: $('startPanel'), startBtn: $('startBtn'), cvNote: $('cvNote'),
   error: $('errorPanel'), errorText: $('errorText'), retryBtn: $('retryBtn'),
-  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), freezeBtn: $('freezeBtn'),
+  levels: $('levels'), allBtn: $('allBtn'), noneBtn: $('noneBtn'), tag: $('markerTag'),
   testRow: $('testRow'), testInput: $('testInput'),
-  debug: $('debugPanel'), mask: $('maskPreview'), version: $('ratioVersion'),
+  debug: $('debugPanel'), mask: $('maskPreview'),
 };
 
-// mode: idle | requesting | live | frozen | test | error
+// mode: idle | requesting | live | test | error
 const app = {
   mode: 'idle',
   cv: null, cvState: 'loading', // loading | ready | failed
@@ -31,7 +32,6 @@ const app = {
   session: 0, // bumped on every camera start/stop; stale frame callbacks exit
   src: document.createElement('canvas'), // current frame at source resolution
   result: null, // {markers?, reason, candidates, rejected, maskPreview?}
-  frozen: null, // {canvas, result}
   errorKind: null, // camera error kind or 'cv' / 'config'
 };
 const srcCtx = app.src.getContext('2d', { willReadFrequently: true });
@@ -76,7 +76,6 @@ async function startCamera() {
   stopCamera();
   const session = app.session;
   app.mode = 'requesting';
-  app.frozen = null;
   updateUi();
   try {
     const stream = await startRearCamera();
@@ -111,14 +110,13 @@ function fail(kind) {
   app.mode = 'error';
   app.errorKind = kind;
   app.result = null;
-  app.frozen = null;
   updateUi();
 }
 
 // ---------- Analysis loop ----------
 function scheduleFrame(session) {
   if (session !== app.session) return;
-  if (app.mode !== 'live' && app.mode !== 'frozen') return;
+  if (app.mode !== 'live') return;
   const v = els.video;
   const next = () => onFrame(session);
   if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(next);
@@ -166,7 +164,7 @@ function analyzeCurrent() {
   app.result = { ...det, markers: cls.ok ? cls.markers : null, reason: cls.ok ? 'ok' : cls.reason };
   draw();
   updateStatus();
-  syncFreezeButton();
+  syncMarkerTag();
   if (DEBUG) updateDebug();
 }
 
@@ -176,34 +174,11 @@ function selectedLevels() {
 }
 
 function draw() {
-  if (app.mode === 'frozen' && app.frozen) {
-    render(els.view, app.frozen.canvas, app.frozen.result, selectedLevels(), { frozen: true, debug: DEBUG });
-  } else if (app.mode === 'live' || app.mode === 'test') {
+  if (app.mode === 'live' || app.mode === 'test') {
     render(els.view, app.src.width ? app.src : null, app.result, selectedLevels(), { debug: DEBUG });
   } else {
     render(els.view, null, null, []);
   }
-}
-
-// ---------- Freeze / resume ----------
-function freeze() {
-  if (app.mode !== 'live' || !app.result?.markers) return;
-  const c = document.createElement('canvas');
-  c.width = app.src.width;
-  c.height = app.src.height;
-  c.getContext('2d').drawImage(app.src, 0, 0);
-  // Copy the result so the frozen frame and its coordinates stay together.
-  app.frozen = { canvas: c, result: structuredClone({ markers: app.result.markers, candidates: app.result.candidates, rejected: app.result.rejected, reason: 'ok' }) };
-  app.mode = 'frozen';
-  updateUi();
-}
-
-function resume() {
-  if (app.mode !== 'frozen') return;
-  app.frozen = null; // discard frozen frame and coordinates
-  app.result = null;
-  app.mode = 'live';
-  updateUi();
 }
 
 // ---------- UI ----------
@@ -223,7 +198,6 @@ function updateStatus() {
     case 'idle': return setStatus('카메라를 시작하세요', 'idle');
     case 'requesting': return setStatus('카메라 권한을 요청하는 중…', 'idle');
     case 'error': return setStatus('오류', 'error');
-    case 'frozen': return setStatus('■ 화면 정지됨 — 재개를 누르면 다시 인식합니다', 'frozen');
   }
   if (app.cvState === 'loading') return setStatus(app.cvSlow ? '인식 엔진을 불러오는 중… 네트워크가 느립니다. 잠시 기다려 주세요.' : '인식 엔진(OpenCV) 불러오는 중…', 'idle');
   if (app.cvState === 'failed') return setStatus('인식 엔진을 불러오지 못했습니다', 'error');
@@ -247,18 +221,20 @@ function updateUi() {
     els.retryBtn.dataset.target = m === 'error' ? 'camera' : 'cv';
   }
 
-  syncFreezeButton();
+  syncMarkerTag();
   document.body.dataset.mode = m;
   updateStatus();
   draw();
 }
 
-// Freeze is enabled only while recognition succeeds live (spec §7).
-function syncFreezeButton() {
-  const m = app.mode;
-  els.freezeBtn.textContent = m === 'frozen' ? '재개' : '화면 정지';
-  els.freezeBtn.disabled = !(m === 'frozen' || (m === 'live' && app.result?.markers));
-  els.freezeBtn.classList.toggle('resume', m === 'frozen');
+// Top-left glass tag: how many markers the current frame has (n/3).
+function syncMarkerTag() {
+  const show = (app.mode === 'live' || app.mode === 'test') && app.cvState === 'ready';
+  els.tag.hidden = !show;
+  if (!show) return;
+  const { text, tone } = markerTag(app.result);
+  els.tag.textContent = text;
+  els.tag.dataset.tone = tone;
 }
 
 function buildLevelChips() {
@@ -272,7 +248,7 @@ function buildLevelChips() {
     b.addEventListener('click', () => {
       if (app.selected.has(lv.name)) app.selected.delete(lv.name); else app.selected.add(lv.name);
       b.setAttribute('aria-pressed', String(app.selected.has(lv.name)));
-      draw(); // while frozen this redraws from the stored markers
+      draw();
     });
     return b;
   }));
@@ -327,7 +303,6 @@ async function boot() {
   els.retryBtn.addEventListener('click', () => {
     if (els.retryBtn.dataset.target === 'cv') loadCv(); else startCamera();
   });
-  els.freezeBtn.addEventListener('click', () => (app.mode === 'frozen' ? resume() : freeze()));
   els.allBtn.addEventListener('click', () => setAll(true));
   els.noneBtn.addEventListener('click', () => setAll(false));
   els.testInput.addEventListener('change', () => onTestImage(els.testInput.files[0]));
@@ -350,7 +325,6 @@ async function boot() {
     ]);
     app.ratios = ratios.levels;
     app.cfg = cfg;
-    els.version.textContent = `Ratio: ${ratios.version}`;
     buildLevelChips();
     els.startBtn.disabled = false;
   } catch (err) {

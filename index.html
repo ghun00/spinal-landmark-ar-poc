@@ -12,6 +12,7 @@
 
   <main id="stage" class="stage">
     <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
+    <div id="markerTag" class="tag" role="status" aria-live="polite" data-tone="idle" hidden>마커 0/3</div>
 
     <section id="startPanel" class="panel">
       <h1>척추 레벨 예상 위치 표시</h1>
@@ -39,12 +40,10 @@
     <div class="row">
       <button id="allBtn" type="button">전체 선택</button>
       <button id="noneBtn" type="button">전체 해제</button>
-      <button id="freezeBtn" class="primary freeze" type="button" disabled>화면 정지</button>
     </div>
     <div id="testRow" class="row test" hidden>
       <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
     </div>
-    <footer>비율 기반 추정 위치 · 해부학적 정확도 미검증 · <span id="ratioVersion"></span></footer>
   </section>
 
   <video id="video" playsinline muted autoplay></video>

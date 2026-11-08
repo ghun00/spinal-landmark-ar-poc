@@ -43,7 +43,7 @@ function text(ctx, s, x, y, color, align = 'left') {
  * @param {CanvasImageSource & {width:number,height:number}} frame source frame (source pixels)
  * @param {object|null} result {markers?, candidates, rejected}
  * @param {{name:string,ratio:number}[]} levels selected levels
- * @param {{frozen?:boolean, debug?:boolean}} flags
+ * @param {{debug?:boolean}} flags
  */
 export function render(canvas, frame, result, levels, flags = {}) {
   const { ctx, w, h } = fitCanvas(canvas);
@@ -56,12 +56,6 @@ export function render(canvas, frame, result, levels, flags = {}) {
 
   if (flags.debug && result) drawDebug(ctx, t, result);
   if (result?.markers) drawOverlay(ctx, t, result.markers, levels, { w, h });
-
-  if (flags.frozen) {
-    ctx.strokeStyle = COLORS.level;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(t.ox + 2, t.oy + 2, frame.width * t.scale - 4, frame.height * t.scale - 4);
-  }
 }
 
 function drawOverlay(ctx, t, markers, levels, box) {
