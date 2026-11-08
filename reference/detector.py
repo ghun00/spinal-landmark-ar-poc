@@ -21,9 +21,9 @@ def detect(bgr, cfg):
     s = _scale_for(w, h, cfg["processLongSide"])
     img = bgr
     if s != 1.0:
-        img = cv2.resize(bgr, (round(w * s), round(h * s)), interpolation=cv2.INTER_AREA)
+        img = cv2.resize(bgr, (int(w * s + 0.5), int(h * s + 0.5)), interpolation=cv2.INTER_AREA)
     ph, pw = img.shape[:2]
-    # The kept image may round slightly differently than s; use exact ratios.
+    # Use the exact per-axis ratios of the rounded size (same as app/detector.js).
     sx, sy = pw / w, ph / h
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
