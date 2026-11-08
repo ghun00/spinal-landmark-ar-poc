@@ -6,14 +6,17 @@
   <meta name="theme-color" content="#0b0d10">
   <title>Spinal Landmarking PoC</title>
   <link rel="stylesheet" href="app/style.css">
+  <link rel="stylesheet" href="app/style-v2.css">
 </head>
-<body data-mode="idle">
+<!-- UI: app/style.css (base) + app/style-v2.css (overlay controls).
+     app/main.js owns state; app/v2.js groups the level chips into the sheet. -->
+<body data-mode="idle" data-default-track="live" class="v2">
   <main id="stage" class="stage">
     <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
     <div id="markerTag" class="tag" role="status" aria-live="polite" data-tone="idle" hidden>마커 0/3</div>
     <div id="modeToggle" class="seg" role="group" aria-label="인식 방식" hidden>
-      <button type="button" data-track="lock" aria-pressed="true">고정형</button>
-      <button type="button" data-track="live" aria-pressed="false">실시간형</button>
+      <button type="button" data-track="lock" aria-pressed="false">고정형</button>
+      <button type="button" data-track="live" aria-pressed="true">실시간형</button>
     </div>
     <div id="status" class="toast" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
 
@@ -36,21 +39,44 @@
 
     <pre id="debugPanel" class="debug" hidden></pre>
     <canvas id="maskPreview" class="mask" hidden></canvas>
+
+    <!-- Floating bottom bar over the camera view -->
+    <div class="dock">
+      <div id="testRow" class="dock-test" hidden>
+        <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
+      </div>
+      <div class="dock-stack">
+        <button id="reanalyzeBtn" class="re-pill" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>다시 분석</span>
+        </button>
+        <button id="levelPill" class="level-pill" type="button" aria-haspopup="dialog" aria-controls="levelSheet" aria-expanded="false">
+          <span class="level-pill-label">레벨</span>
+          <span id="levelSummary" class="level-pill-value">T1 · T7 · L1 · S1</span>
+          <svg class="level-pill-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
   </main>
 
-  <section class="controls">
-    <div id="levels" class="levels" aria-label="표시할 레벨"></div>
-    <div class="row">
-      <button id="allBtn" type="button">전체 선택</button>
-      <button id="noneBtn" type="button">전체 해제</button>
-      <button id="reanalyzeBtn" class="primary" type="button" disabled>다시 분석</button>
-    </div>
-    <div id="testRow" class="row test" hidden>
-      <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
-    </div>
+  <!-- Level selection bottom sheet -->
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+  <section id="levelSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1" hidden>
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <h2 id="sheetTitle">표시할 레벨</h2>
+      <div class="sheet-actions">
+        <button id="allBtn" class="text-btn" type="button">전체</button>
+        <span aria-hidden="true">·</span>
+        <button id="noneBtn" class="text-btn" type="button">해제</button>
+      </div>
+    </header>
+    <div id="levels" class="levels-grouped" aria-label="표시할 레벨"></div>
+    <button id="sheetDone" class="sheet-done" type="button">완료</button>
   </section>
 
   <video id="video" playsinline muted autoplay></video>
   <script type="module" src="app/main.js"></script>
+  <script type="module" src="app/v2.js"></script>
 </body>
 </html>
