@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Spinal Landmarking PoC</title>
+  <link rel="stylesheet" href="app/style.css">
+</head>
+<body data-mode="idle">
+  <div id="status" class="status" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
+
+  <main id="stage" class="stage">
+    <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
+
+    <section id="startPanel" class="panel">
+      <h1>척추 레벨 예상 위치 표시</h1>
+      <ol>
+        <li>C7과 좌·우 PSIS에 빨간 원형 스티커 3개를 붙입니다.</li>
+        <li>대상자는 등을 카메라 쪽으로 향하고 바로 섭니다.</li>
+        <li>휴대폰을 세워 등 뒤에서 똑바로, 스티커 3개가 모두 보이게 촬영합니다.</li>
+      </ol>
+      <p class="muted">표시되는 점은 비율 기반 추정 위치이며 해부학적 정확도는 검증되지 않았습니다.</p>
+      <button id="startBtn" class="primary" type="button" disabled>카메라 시작</button>
+      <p id="cvNote" class="muted small"></p>
+    </section>
+
+    <section id="errorPanel" class="panel error" hidden>
+      <p id="errorText"></p>
+      <button id="retryBtn" class="primary" type="button">다시 시도</button>
+    </section>
+
+    <pre id="debugPanel" class="debug" hidden></pre>
+    <canvas id="maskPreview" class="mask" hidden></canvas>
+  </main>
+
+  <section class="controls">
+    <div id="levels" class="levels" aria-label="표시할 레벨"></div>
+    <div class="row">
+      <button id="allBtn" type="button">전체 선택</button>
+      <button id="noneBtn" type="button">전체 해제</button>
+      <button id="freezeBtn" class="primary freeze" type="button" disabled>화면 정지</button>
+    </div>
+    <div id="testRow" class="row test" hidden>
+      <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
+    </div>
+    <footer>비율 기반 추정 위치 · 해부학적 정확도 미검증 · <span id="ratioVersion"></span></footer>
+  </section>
+
+  <video id="video" playsinline muted autoplay></video>
+  <script type="module" src="app/main.js"></script>
+</body>
+</html>
