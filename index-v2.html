@@ -46,15 +46,15 @@
       <div id="testRow" class="dock-test" hidden>
         <label>테스트 이미지 <input id="testInput" type="file" accept="image/*"></label>
       </div>
-      <div class="dock-row">
+      <div class="dock-stack">
+        <button id="reanalyzeBtn" class="re-pill" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>다시 분석</span>
+        </button>
         <button id="levelPill" class="level-pill" type="button" aria-haspopup="dialog" aria-controls="levelSheet" aria-expanded="false">
           <span class="level-pill-label">레벨</span>
           <span id="levelSummary" class="level-pill-value">T1 · T7 · L1 · S1</span>
           <svg class="level-pill-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button id="reanalyzeBtn" class="shutter" type="button" disabled aria-label="다시 분석">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="shutter-label">다시 분석</span>
         </button>
       </div>
     </div>

@@ -192,3 +192,62 @@ body.v2 {
 .v2 .sheet:focus { outline: none; }
 .v2 button:focus { outline: none; }
 .v2 button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* =====================================================================
+   Neutral frosted (v2.3) — after the QR-scan reference:
+   no borders, no shadows, no glow; neutral gray translucent fill with a
+   strong blur; full pills and circles; color only inside popups.
+   ===================================================================== */
+body.v2 {
+  --nf-fill: rgba(112, 117, 125, .36);
+  --nf-fill-press: rgba(140, 145, 152, .46);
+  --nf-blur: blur(20px) saturate(140%);
+  --dock-h: 124px;
+}
+.v2 .tag,
+.v2 .seg,
+.v2 .level-pill,
+.v2 .re-pill,
+.v2 .toast {
+  border: 0;
+  box-shadow: none;
+  background: var(--nf-fill);
+  -webkit-backdrop-filter: var(--nf-blur);
+  backdrop-filter: var(--nf-blur);
+}
+.v2 .seg { padding: 4px; }
+.v2 .seg button { color: rgba(255, 255, 255, .85); }
+.v2 .seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .9); color: #111; box-shadow: none; }
+
+/* Dock: small re-analyze pill centered above a full-width level pill */
+.v2 .dock-stack { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.v2 .level-pill {
+  width: 100%; height: 56px; border-radius: 999px; padding: 0 22px;
+  justify-content: center; gap: 10px;
+}
+.v2 .level-pill-label { color: rgba(255, 255, 255, .6); font-weight: 500; }
+.v2 .level-pill-value { flex: 0 1 auto; font-weight: 600; color: rgba(255, 255, 255, .95); }
+.v2 .level-pill-icon { color: rgba(255, 255, 255, .6); }
+.v2 .level-pill:active { background: var(--nf-fill-press); transform: none; }
+
+.v2 .re-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 44px; min-height: 0; padding: 0 20px; border-radius: 999px;
+  color: rgba(255, 255, 255, .95); font-size: 14px; font-weight: 600;
+  transition: opacity .2s ease, background .15s ease;
+}
+.v2 .re-pill svg { width: 18px; height: 18px; }
+.v2 .re-pill:disabled { opacity: .4; }
+.v2 .re-pill:not(:disabled):active { background: var(--nf-fill-press); }
+
+/* Toast: same material, more transparent; tone shown by a dot */
+.v2 .toast,
+.v2 .toast[data-tone="warn"],
+.v2 .toast[data-tone="error"] { background: rgba(112, 117, 125, .28); border-radius: 999px; padding: 10px 18px; font-weight: 500; }
+.v2 .toast[data-tone="warn"]::before,
+.v2 .toast[data-tone="error"]::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 8px; vertical-align: 1px; background: var(--warn);
+}
+.v2 .toast[data-tone="error"]::before { background: var(--error); }
