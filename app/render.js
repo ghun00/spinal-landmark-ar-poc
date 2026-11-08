@@ -104,13 +104,13 @@ function drawOverlay(ctx, t, markers, levels, box) {
 function drawDebug(ctx, t, result) {
   for (const cnd of result.candidates ?? []) {
     const p = toScreen(t, cnd);
-    text(ctx, `A${Math.round(cnd.area)} c${cnd.circularity.toFixed(2)}`, p.x + 12, p.y + 14, '#9ef', 'left');
+    text(ctx, `A${Math.round(cnd.area)} c${cnd.circularity.toFixed(2)}${cnd.hsv ? ` H${cnd.hsv[0]} S${cnd.hsv[1]} V${cnd.hsv[2]}` : ''}`, p.x + 12, p.y + 14, '#9ef', 'left');
   }
   for (const rj of result.rejected ?? []) {
     const p = toScreen(t, rj);
     ctx.strokeStyle = COLORS.rejected;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(p.x - 6, p.y - 6); ctx.lineTo(p.x + 6, p.y + 6); ctx.moveTo(p.x + 6, p.y - 6); ctx.lineTo(p.x - 6, p.y + 6); ctx.stroke();
-    text(ctx, `${rj.why} A${Math.round(rj.area)} c${rj.circularity.toFixed(2)}`, p.x + 8, p.y + 12, COLORS.rejected, 'left');
+    text(ctx, `${rj.why} A${Math.round(rj.area)} c${rj.circularity.toFixed(2)}${rj.hsv ? ` H${rj.hsv[0]} S${rj.hsv[1]} V${rj.hsv[2]}` : ''}`, p.x + 8, p.y + 12, COLORS.rejected, 'left');
   }
 }

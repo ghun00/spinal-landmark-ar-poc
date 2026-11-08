@@ -49,3 +49,20 @@ test('no Mat leak over 300 runs', () => {
   for (let i = 0; i < 300; i++) detectCandidates(cv, img, CFG, { debug: true });
   assert.equal(cv.HEAP8.length, before);
 });
+
+test('debug mode reports mean HSV inside each candidate (sticker red is H~0, S~206, V~210)', () => {
+  const { candidates, rejected } = detectCandidates(cv, fixture('red_rect'), CFG, { debug: true });
+  assert.equal(candidates.length, 3);
+  for (const c of candidates) {
+    const [h, s, v] = c.hsv;
+    assert.ok(h <= 10 || h >= 170, `hue ${h}`);
+    assert.ok(Math.abs(s - 206) <= 15, `sat ${s}`);
+    assert.ok(Math.abs(v - 210) <= 15, `val ${v}`);
+  }
+  assert.ok(rejected.every((r) => Array.isArray(r.hsv)));
+});
+
+test('non-debug mode does not compute HSV', () => {
+  const { candidates } = detectCandidates(cv, fixture('normal'), CFG);
+  assert.equal(candidates[0].hsv, undefined);
+});

@@ -55,6 +55,9 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
     const work = keep(mask.clone()); // findContours may modify its input in some builds
     cv.findContours(work, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
+    // Debug only: per-contour fill mask for mean-HSV readout (threshold tuning).
+    const fill = opts.debug ? keep(cv.Mat.zeros(ph, pw, cv.CV_8UC1)) : null;
+
     const frameArea = pw * ph;
     const amin = cfg.minAreaFrac * frameArea, amax = cfg.maxAreaFrac * frameArea;
     const candidates = [], rejected = [];
@@ -68,6 +71,7 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
         const x = (mo.m00 > 0 ? mo.m10 / mo.m00 : c.data32S[0]) / sx;
         const y = (mo.m00 > 0 ? mo.m01 / mo.m00 : c.data32S[1]) / sy;
         const item = { x, y, area, circularity };
+        if (fill) item.hsv = meanHsv(cv, hsv, fill, contours, i, cv.boundingRect(c));
         if (area < amin) rejected.push({ ...item, why: 'small' });
         else if (area > amax) rejected.push({ ...item, why: 'large' });
         else if (circularity < cfg.minCircularity) rejected.push({ ...item, why: 'circularity' });
@@ -84,6 +88,26 @@ export function detectCandidates(cv, image, cfg, opts = {}) {
   } finally {
     for (const x of mats) x.delete();
   }
+}
+
+/**
+ * Mean [H, S, V] of the pixels inside contour i (debug readout). Hue is
+ * averaged after shifting by 90 so reds near 0 and 180 do not cancel out.
+ */
+function meanHsv(cv, hsv, fill, contours, i, r) {
+  cv.drawContours(fill, contours, i, new cv.Scalar(255), -1);
+  const W = hsv.cols, hd = hsv.data, md = fill.data;
+  let n = 0, hs = 0, ss = 0, vs = 0;
+  for (let y = r.y; y < r.y + r.height; y++) {
+    for (let x = r.x; x < r.x + r.width; x++) {
+      const k = y * W + x;
+      if (!md[k]) continue;
+      md[k] = 0; // leave the fill mask clean for the next contour
+      hs += (hd[k * 3] + 90) % 180; ss += hd[k * 3 + 1]; vs += hd[k * 3 + 2]; n++;
+    }
+  }
+  if (!n) return [0, 0, 0];
+  return [Math.round(((hs / n) + 90) % 180), Math.round(ss / n), Math.round(vs / n)];
 }
 
 function preview(cv, mask, keep) {

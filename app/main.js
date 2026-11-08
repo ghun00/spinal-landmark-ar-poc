@@ -188,9 +188,13 @@ const REASON_TEXT = {
   bad_layout: 'C7이 위, PSIS 2개가 아래에 오도록 등 뒤에서 똑바로 촬영하세요',
 };
 
+// Floating toast over the camera view. It never takes layout space, so the
+// frame size does not change when the message length changes. Hidden while
+// recognition succeeds (the marker tag already says 3/3).
 function setStatus(text, tone) {
-  els.status.textContent = text;
+  if (els.status.textContent !== text) els.status.textContent = text;
   els.status.dataset.tone = tone;
+  els.status.classList.toggle('show', tone !== 'ok' && text !== '');
 }
 
 function updateStatus() {
@@ -266,9 +270,9 @@ function updateDebug() {
   const lines = [
     `frame ${app.src.width}×${app.src.height}`,
     `candidates ${r.candidates.length} → ${r.reason}`,
-    ...r.candidates.map((c, i) => `  #${i} (${c.x.toFixed(1)}, ${c.y.toFixed(1)}) A=${c.area.toFixed(0)} circ=${c.circularity.toFixed(2)}`),
+    ...r.candidates.map((c, i) => `  #${i} (${c.x.toFixed(0)}, ${c.y.toFixed(0)}) A=${c.area.toFixed(0)} circ=${c.circularity.toFixed(2)}${c.hsv ? ` HSV=${c.hsv.join('/')}` : ''}`),
     `rejected ${r.rejected.length}`,
-    ...r.rejected.slice(0, 8).map((c) => `  ${c.why} (${c.x.toFixed(0)}, ${c.y.toFixed(0)}) A=${c.area.toFixed(0)} circ=${c.circularity.toFixed(2)}`),
+    ...r.rejected.slice(0, 8).map((c) => `  ${c.why} (${c.x.toFixed(0)}, ${c.y.toFixed(0)}) A=${c.area.toFixed(0)} circ=${c.circularity.toFixed(2)}${c.hsv ? ` HSV=${c.hsv.join('/')}` : ''}`),
   ];
   els.debug.textContent = lines.join('\n');
   if (r.maskPreview) {

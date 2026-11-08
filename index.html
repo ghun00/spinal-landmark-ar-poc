@@ -8,11 +8,10 @@
   <link rel="stylesheet" href="app/style.css">
 </head>
 <body data-mode="idle">
-  <div id="status" class="status" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
-
   <main id="stage" class="stage">
     <canvas id="view" aria-label="카메라 영상과 예상 위치"></canvas>
     <div id="markerTag" class="tag" role="status" aria-live="polite" data-tone="idle" hidden>마커 0/3</div>
+    <div id="status" class="toast" role="status" aria-live="polite" data-tone="idle">불러오는 중…</div>
 
     <section id="startPanel" class="panel">
       <h1>척추 레벨 예상 위치 표시</h1>
