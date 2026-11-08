@@ -53,11 +53,9 @@ python3 -m venv .venv
 ## Vercel 배포
 
 1. Vercel → **Add New… → Project** → 이 GitHub 저장소 Import
-2. Framework Preset: **Other**
-3. Build Command: 비움 / Output Directory: 비움(루트) / Install Command: 비움
-4. Deploy → 발급된 `https://…vercel.app` 주소를 Galaxy S25 Chrome에서 열기
+2. Deploy → 발급된 `https://…vercel.app` 주소를 Galaxy S25 Chrome에서 열기
 
-`.vercelignore`로 `reference/`, `tests/`, `docs/`, 마크다운은 배포에서 제외됩니다. `vercel.json`은 `vendor/` 파일에 장기 캐시 헤더만 지정합니다. 배포 후 개발자 도구 Network에서 `vendor/opencv-4.13.0.js`가 200, `text/javascript`, 약 10.9MB로 응답하는지 확인하세요.
+빌드 설정은 `vercel.json`에 고정되어 있어 대시보드 설정보다 우선합니다: `framework: null`(Other), install·build 명령 없음, 저장소 루트를 그대로 정적 배포. Vercel이 `reference/requirements.txt`를 보고 프레임워크를 Python으로 자동 선택해도 Python 빌드가 실행되지 않습니다. `.vercelignore`로 `reference/`, `tests/`, `docs/`, 마크다운은 배포에서 제외되며, `vendor/` 파일에는 장기 캐시 헤더를 지정합니다. 배포 후 개발자 도구 Network에서 `vendor/opencv-4.13.0.js`가 200, `text/javascript`, 약 10.9MB로 응답하는지 확인하세요.
 
 ## 설정 변경
 
