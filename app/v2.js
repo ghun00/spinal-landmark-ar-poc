@@ -4,6 +4,7 @@
 // spine region, keeps the summary pill in sync, and opens/closes the sheet.
 
 const GROUPS = [
+  { title: '경추', sub: 'Cervical', test: (n) => n.startsWith('C') },
   { title: '흉추', sub: 'Thoracic', test: (n) => n.startsWith('T') },
   { title: '요추', sub: 'Lumbar', test: (n) => n.startsWith('L') },
   { title: '천추', sub: 'Sacral', test: (n) => n.startsWith('S') },
