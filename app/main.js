@@ -6,7 +6,7 @@ import { loadRatios, DEFAULT_SELECTED } from './levels.js';
 import { render } from './render.js';
 
 const CV_SRC = 'vendor/opencv-4.13.0.js';
-const CV_TIMEOUT_MS = 30000;
+const CV_SLOW_MS = 30000; // after this, tell the user it is slow but keep waiting
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -28,6 +28,7 @@ const app = {
   cv: null, cvState: 'loading', // loading | ready | failed
   cfg: null, ratios: [], selected: new Set(DEFAULT_SELECTED),
   stream: null, busy: false,
+  session: 0, // bumped on every camera start/stop; stale frame callbacks exit
   src: document.createElement('canvas'), // current frame at source resolution
   result: null, // {markers?, reason, candidates, rejected, maskPreview?}
   frozen: null, // {canvas, result}
@@ -37,7 +38,9 @@ const srcCtx = app.src.getContext('2d', { willReadFrequently: true });
 
 // ---------- OpenCV.js loading (with retry) ----------
 function loadCv() {
+  if (app.cvState === 'loading' && document.querySelector('script[data-cv]')) return;
   app.cvState = 'loading';
+  app.cvSlow = false;
   updateUi();
   return new Promise((resolve, reject) => {
     const done = () => {
@@ -54,7 +57,8 @@ function loadCv() {
     s.dataset.cv = '1';
     document.head.appendChild(s);
     const poll = setInterval(() => { if (window.cv?.Mat && window.cv?.findContours) done(); }, 200);
-    const timer = setTimeout(() => { clearInterval(poll); reject(new Error('timeout')); }, CV_TIMEOUT_MS);
+    // A slow network is not a failure: keep polling and accept a late success.
+    const timer = setTimeout(() => { app.cvSlow = true; updateUi(); }, CV_SLOW_MS);
   }).then(() => {
     app.cv = window.cv;
     app.cvState = 'ready';
@@ -70,11 +74,13 @@ function loadCv() {
 // ---------- Camera ----------
 async function startCamera() {
   stopCamera();
+  const session = app.session;
   app.mode = 'requesting';
   app.frozen = null;
   updateUi();
   try {
     const stream = await startRearCamera();
+    if (session !== app.session) { for (const t of stream.getTracks()) t.stop(); return; }
     app.stream = stream;
     const track = stream.getVideoTracks()[0];
     track.addEventListener('ended', () => {
@@ -85,7 +91,7 @@ async function startCamera() {
     app.mode = 'live';
     app.result = null;
     updateUi();
-    scheduleFrame();
+    scheduleFrame(session);
   } catch (err) {
     console.error('[camera]', err);
     stopCamera();
@@ -94,6 +100,7 @@ async function startCamera() {
 }
 
 function stopCamera() {
+  app.session++; // invalidates any pending requestVideoFrameCallback chain
   if (app.stream) for (const t of app.stream.getTracks()) t.stop();
   app.stream = null;
   els.video.srcObject = null;
@@ -109,14 +116,17 @@ function fail(kind) {
 }
 
 // ---------- Analysis loop ----------
-function scheduleFrame() {
+function scheduleFrame(session) {
+  if (session !== app.session) return;
   if (app.mode !== 'live' && app.mode !== 'frozen') return;
   const v = els.video;
-  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(onFrame);
-  else requestAnimationFrame(onFrame);
+  const next = () => onFrame(session);
+  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(next);
+  else requestAnimationFrame(next);
 }
 
-function onFrame() {
+function onFrame(session) {
+  if (session !== app.session) return; // callback from a previous camera session
   if (app.mode === 'live' && !app.busy) {
     app.busy = true;
     try {
@@ -138,7 +148,7 @@ function onFrame() {
       app.busy = false;
     }
   }
-  scheduleFrame();
+  scheduleFrame(session);
 }
 
 /** Detect + classify on app.src. Invalid frames clear the result entirely. */
@@ -215,7 +225,7 @@ function updateStatus() {
     case 'error': return setStatus('오류', 'error');
     case 'frozen': return setStatus('■ 화면 정지됨 — 재개를 누르면 다시 인식합니다', 'frozen');
   }
-  if (app.cvState === 'loading') return setStatus('인식 엔진(OpenCV) 불러오는 중…', 'idle');
+  if (app.cvState === 'loading') return setStatus(app.cvSlow ? '인식 엔진을 불러오는 중… 네트워크가 느립니다. 잠시 기다려 주세요.' : '인식 엔진(OpenCV) 불러오는 중…', 'idle');
   if (app.cvState === 'failed') return setStatus('인식 엔진을 불러오지 못했습니다', 'error');
   if (!app.result) return setStatus(app.mode === 'test' ? '테스트 이미지를 선택하세요' : '인식 대기 중…', 'warn');
   if (app.result.markers) return setStatus(app.mode === 'test' ? '인식 성공 (테스트 이미지)' : '● 인식 중', 'ok');
@@ -321,6 +331,11 @@ async function boot() {
   els.allBtn.addEventListener('click', () => setAll(true));
   els.noneBtn.addEventListener('click', () => setAll(false));
   els.testInput.addEventListener('change', () => onTestImage(els.testInput.files[0]));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && app.stream && els.video.paused) {
+      els.video.play().catch((err) => console.warn('[camera] resume play failed', err));
+    }
+  });
   window.addEventListener('resize', draw);
   window.addEventListener('orientationchange', draw);
 
