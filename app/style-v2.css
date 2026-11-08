@@ -113,3 +113,82 @@ body.v2 { --dock-h: 96px; --glass: rgba(18, 21, 26, .62); --glass-line: rgba(255
 .v2[data-mode="idle"] .dock,
 .v2[data-mode="requesting"] .dock,
 .v2[data-mode="error"] .dock { display: none; }
+
+/* =====================================================================
+   Frosted controls + brand color (v2 trial)
+   Bottom controls reuse the original top tag/toggle frosted style
+   (rgba white .14 fill, .28 edge, blur 14px). Popups are plain solid
+   surfaces. Primary actions use a Daangn-like orange.
+   ===================================================================== */
+body.v2 {
+  --brand: #ff6f0f;
+  --brand-press: #e85f00;
+  --frost-fill: rgba(255, 255, 255, .14);
+  --frost-edge: rgba(255, 255, 255, .28);
+  --frost-blur: blur(14px) saturate(160%);
+  --frost-shadow: 0 4px 16px rgba(0, 0, 0, .25);
+  --surface: #1c2026;
+  --surface-line: rgba(255, 255, 255, .08);
+}
+
+/* Dock: same frosted material as the top-left tag / top-right toggle */
+.v2 .level-pill,
+.v2 .shutter:disabled {
+  background: var(--frost-fill);
+  border: 1px solid var(--frost-edge);
+  -webkit-backdrop-filter: var(--frost-blur);
+  backdrop-filter: var(--frost-blur);
+  box-shadow: var(--frost-shadow);
+}
+.v2 .level-pill { height: 56px; border-radius: 999px; padding: 0 18px 0 20px; }
+.v2 .level-pill-label { color: rgba(255, 255, 255, .7); }
+.v2 .level-pill-icon { color: rgba(255, 255, 255, .8); }
+
+.v2 .shutter { width: 64px; height: 64px; }
+.v2 .shutter:disabled { color: rgba(255, 255, 255, .55); }
+.v2 .shutter:not(:disabled) {
+  background: var(--brand); color: #fff; border: 0;
+  box-shadow: 0 0 0 4px rgba(255, 111, 15, .25), 0 8px 20px rgba(0, 0, 0, .3);
+}
+.v2 .shutter:not(:disabled):active { background: var(--brand-press); }
+.v2 .shutter-label { text-shadow: 0 1px 4px rgba(0, 0, 0, .55); }
+
+/* Toast: frosted dark, same blur */
+.v2 .toast {
+  background: rgba(15, 18, 22, .72); border: 1px solid rgba(255, 255, 255, .16);
+  -webkit-backdrop-filter: var(--frost-blur); backdrop-filter: var(--frost-blur);
+}
+
+/* Popups: plain solid surfaces (no glass) */
+.v2 .panel {
+  background: var(--surface); border: 1px solid var(--surface-line);
+  border-radius: 20px; padding: 22px;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+}
+.v2 .panel h1 { font-size: 19px; letter-spacing: -.01em; }
+.v2 .panel ol { color: rgba(255, 255, 255, .86); }
+
+.v2 .sheet {
+  background: var(--surface); border-top: 1px solid var(--surface-line);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, .45);
+}
+.v2 .sheet-backdrop { background: rgba(0, 0, 0, .4); }
+
+/* Primary buttons -> brand orange (camera start, retry, sheet done) */
+.v2 button.primary,
+.v2 .sheet-done {
+  background: var(--brand); border: 0; color: #fff; font-weight: 700;
+  border-radius: 14px; min-height: 52px; box-shadow: none;
+}
+.v2 button.primary:active, .v2 .sheet-done:active { background: var(--brand-press); }
+.v2 button.primary:disabled { opacity: 1; background: rgba(255, 255, 255, .12); color: rgba(255, 255, 255, .5); }
+
+/* The start panel already explains the next step. */
+.v2[data-mode="idle"] .toast { display: none; }
+
+/* Focus: none on the dialog container, brand ring for keyboard focus. */
+.v2 .sheet:focus { outline: none; }
+.v2 button:focus { outline: none; }
+.v2 button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }

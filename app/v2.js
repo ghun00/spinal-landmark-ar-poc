@@ -67,7 +67,7 @@ function openSheet() {
   sheet.hidden = false;
   requestAnimationFrame(() => { backdrop.classList.add('open'); sheet.classList.add('open'); });
   pill.setAttribute('aria-expanded', 'true');
-  (sheet.querySelector('.chip') ?? done).focus({ preventScroll: true });
+  sheet.focus({ preventScroll: true }); // dialog itself; no ring on a chip
 }
 
 function closeSheet() {
